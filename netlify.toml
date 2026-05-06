@@ -1,0 +1,8 @@
+[build]
+publish = "public"
+# No build command needed — files are already built by GitHub Action and committed
+
+[[redirects]]
+from = "/privacy"
+to = "/privacy.html"
+status = 200
