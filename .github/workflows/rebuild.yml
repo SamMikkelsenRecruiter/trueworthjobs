@@ -1,0 +1,37 @@
+name: Rebuild from Sheet
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run build
+        env:
+          SHEET_CSV_URL: ${{ secrets.SHEET_CSV_URL }}
+        run: python build_from_sheet.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "trueworthjobs-bot"
+          git config user.email "bot@trueworthjobs.com"
+          git add public/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-rebuild: $(date -u +%Y-%m-%d) — refresh from Sheet"
+            git push
+          fi
