@@ -90,6 +90,7 @@ for r in rows:
         "url": r["Apply URL"].strip(),
         "notes": fix_mojibake(r["Notes"].strip()),
         "source": SOURCE_KEY.get(r.get("Source", "Career page").strip(), "v1"),
+        "dateAdded": (r.get("First Listed", "") or "").strip(),
     })
 js_json = json.dumps(js_data, ensure_ascii=False)
 
