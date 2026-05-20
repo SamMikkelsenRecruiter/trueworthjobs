@@ -33,6 +33,34 @@ if not rows:
     print("ERROR: No Live rows found, aborting build", file=sys.stderr)
     sys.exit(2)
 
+# === Text sanitisers (auto-repair bad data from the Sheet) ===
+def fix_mojibake(s):
+    """Repair UTF-8 text that was mis-decoded as Windows-1252 (e.g. 'Â£' -> '£', 'â€\u201c' -> en/em dash)."""
+    if not s:
+        return s
+    if "Â" in s or "â€" in s or "Ã" in s or "â‚¬" in s:
+        try:
+            return s.encode("cp1252").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return s
+    return s
+
+def clean_location(location, county):
+    """Strip the county (and any duplicates) out of the Location field so the site doesn't repeat it."""
+    location = fix_mojibake(location)
+    county = fix_mojibake(county)
+    parts = [p.strip() for p in location.split(",") if p.strip()]
+    seen = set()
+    out = []
+    for p in parts:
+        if county and p.lower() == county.lower():
+            continue
+        if p.lower() in seen:
+            continue
+        seen.add(p.lower())
+        out.append(p)
+    return ", ".join(out) if out else (location or "")
+
 # === 2. Build JS data array (for the in-page filter table) ===
 def salary_num_avg(s):
     nums = [int(n.replace(",", "")) for n in re.findall(r"£([\d,]+)", s)]
@@ -48,17 +76,19 @@ SOURCE_KEY = {
 
 js_data = []
 for r in rows:
+    _county = fix_mojibake(r["County"].strip())
+    _salary = fix_mojibake(r["Salary"].strip())
     js_data.append({
-        "role": r["Role"].strip(),
-        "company": r["Company"].strip(),
-        "location": r["Location"].strip(),
-        "county": r["County"].strip(),
-        "industry": r["Industry"].strip(),
-        "salary": r["Salary"].strip(),
-        "salaryNum": salary_num_avg(r["Salary"]),
+        "role": fix_mojibake(r["Role"].strip()),
+        "company": fix_mojibake(r["Company"].strip()),
+        "location": clean_location(r["Location"].strip(), _county),
+        "county": _county,
+        "industry": fix_mojibake(r["Industry"].strip()),
+        "salary": _salary,
+        "salaryNum": salary_num_avg(_salary),
         "worktype": r["Work Type"].strip(),
         "url": r["Apply URL"].strip(),
-        "notes": r["Notes"].strip(),
+        "notes": fix_mojibake(r["Notes"].strip()),
         "source": SOURCE_KEY.get(r.get("Source", "Career page").strip(), "v1"),
     })
 js_json = json.dumps(js_data, ensure_ascii=False)
@@ -78,17 +108,17 @@ for r in rows:
     p = {
         "@context": "https://schema.org",
         "@type": "JobPosting",
-        "title": r["Role"],
-        "description": f"<p>{r['Notes']}</p><p><strong>Industry:</strong> {r['Industry']}<br><strong>Work type:</strong> {r['Work Type']}<br><strong>Salary:</strong> {r['Salary']}</p>",
+        "title": fix_mojibake(r["Role"]),
+        "description": f"<p>{fix_mojibake(r['Notes'])}</p><p><strong>Industry:</strong> {fix_mojibake(r['Industry'])}<br><strong>Work type:</strong> {r['Work Type']}<br><strong>Salary:</strong> {fix_mojibake(r['Salary'])}</p>",
         "datePosted": r.get("First Listed", TODAY) or TODAY,
         "validThrough": VALID_THROUGH,
         "employmentType": emp_type(r["Role"]),
-        "hiringOrganization": {"@type": "Organization", "name": r["Company"]},
+        "hiringOrganization": {"@type": "Organization", "name": fix_mojibake(r["Company"])},
         "jobLocation": {
             "@type": "Place",
             "address": {
                 "@type": "PostalAddress",
-                "addressLocality": r["Location"],
+                "addressLocality": clean_location(r["Location"], fix_mojibake(r["County"])),
                 "addressRegion": r["County"],
                 "addressCountry": "GB",
             },
