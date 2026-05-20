@@ -143,6 +143,8 @@
   td.company{font-weight:600;min-width:160px}
   td.salary{color:var(--green);font-weight:700;white-space:nowrap}
   td.notes{color:#4a5563;font-size:12px;max-width:340px}
+  .added{white-space:nowrap;font-size:12px;color:#5a6573}
+  .new-badge{display:inline-block;background:#1A7A4C;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;margin-left:4px;letter-spacing:0.5px;vertical-align:middle}
   .badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;margin-left:6px;letter-spacing:0.5px;vertical-align:middle;color:#fff}
   .badge.indeed{background:var(--indeed-fg)}
   .badge.linkedin{background:var(--linkedin-fg)}
@@ -333,6 +335,7 @@
           <th data-sort="industry">Industry <span class="arrow">&#9650;&#9660;</span></th>
           <th data-sort="salary">Salary <span class="arrow">&#9650;&#9660;</span></th>
           <th data-sort="worktype">Type <span class="arrow">&#9650;&#9660;</span></th>
+          <th data-sort="dateAdded">Added <span class="arrow">&#9650;&#9660;</span></th>
           <th>Notes</th>
           <th>Apply</th>
         </tr>
@@ -414,7 +417,26 @@ const SOURCE_LABEL = {
   "linkedin-v3": {label:"LINKEDIN", cls:"linkedin"},
   "cwjobs-v4": {label:"CWJOBS", cls:"cwjobs"}
 };
-let sortKey=null, sortDir=1;
+function _daysAgo(ds){
+  if(!ds) return null;
+  var d=new Date(ds+'T00:00:00');
+  if(isNaN(d)) return null;
+  return Math.floor((Date.now()-d.getTime())/86400000);
+}
+function fmtAdded(ds){
+  var days=_daysAgo(ds);
+  var label;
+  if(days===null) label='';
+  else if(days<=0) label='Today';
+  else if(days===1) label='Yesterday';
+  else if(days<7) label=days+' days ago';
+  else if(days<14) label='1 week ago';
+  else if(days<28) label=Math.floor(days/7)+' weeks ago';
+  else { var d=new Date(ds+'T00:00:00'); label=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+  var fresh=(days!==null && days<=7) ? ' <span class="new-badge">NEW</span>' : '';
+  return label+fresh;
+}
+let sortKey='dateAdded', sortDir=-1;
 function render(){
   const q=document.getElementById('q').value.toLowerCase();
   const wt=document.getElementById('wt').value;
@@ -448,6 +470,7 @@ function render(){
       '<td data-label="Industry">'+r.industry+'</td>'+
       '<td class="salary" data-label="Salary">'+r.salary+'</td>'+
       '<td data-label="Type"><span class="pill '+r.worktype.toLowerCase()+'">'+r.worktype+'</span></td>'+
+      '<td class="added" data-label="Added">'+fmtAdded(r.dateAdded)+'</td>'+
       '<td class="notes" data-label="Notes">'+r.notes+'</td>'+
       '<td data-label="Apply"><a class="apply-btn" href="'+r.url+'" target="_blank" rel="noopener">Apply &rarr;</a></td>'+
       '</tr>';
@@ -507,6 +530,7 @@ document.getElementById('rows').addEventListener('click',function(e){
   });
 })();
 
+var _addedTh=document.querySelector('thead th[data-sort="dateAdded"]'); if(_addedTh) _addedTh.classList.add("sort-desc");
 render();
 </script>
 </body>
