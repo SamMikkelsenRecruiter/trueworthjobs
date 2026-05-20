@@ -167,6 +167,9 @@ Disallow: /private/
 Sitemap: {DOMAIN}/sitemap.xml
 """
 
+# Inject live role count into static copy placeholders
+html = html.replace("{{COUNT}}", str(total))
+
 # === 7. Write outputs ===
 out = "public"
 os.makedirs(out, exist_ok=True)
