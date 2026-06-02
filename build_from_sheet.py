@@ -201,6 +201,16 @@ Sitemap: {DOMAIN}/sitemap.xml
 # Inject live role count into static copy placeholders
 html = html.replace("{{COUNT}}", str(total))
 
+# Inject favicon link tags after the <title> (idempotent — skip if already present)
+if 'rel="icon"' not in html:
+    html = html.replace(
+        "</title>",
+        '</title>\n<link rel="icon" type="image/x-icon" href="/favicon.ico?v=1">\n'
+        '<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1">\n'
+        '<link rel="apple-touch-icon" href="/favicon.ico">',
+        1,
+    )
+
 # === 7. Write outputs ===
 out = "public"
 os.makedirs(out, exist_ok=True)
